@@ -98,6 +98,12 @@ fn create(ty: &Type, item: Option<&syn::Item>) -> TokenStream {
         }
     });
 
+    let input = if meta.cast {
+        quote! { Some(<#ident as #foundations::Reflect>::input) }
+    } else {
+        quote! { None }
+    };
+
     let data = quote! {
         #foundations::NativeTypeData {
             name: #name,
@@ -108,6 +114,8 @@ fn create(ty: &Type, item: Option<&syn::Item>) -> TokenStream {
             keywords: &[#(#keywords),*],
             constructor: ::std::sync::LazyLock::new(|| #constructor),
             scope: ::std::sync::LazyLock::new(|| #scope),
+            input: #input,
+            rust_type_raw: || ::std::any::type_name::<#ident>(),
         }
     };
 

@@ -98,6 +98,7 @@ impl<E: RequiredField<I>, const I: u8> RequiredFieldData<E, I> {
             get_from_styles: |_| None,
             materialize: |_, _| {},
             eq: |a, b| (E::FIELD.get)(a) == (E::FIELD.get)(b),
+            rust_type_raw: || ::std::any::type_name::<E::Type>(),
         }
     }
 
@@ -125,6 +126,7 @@ impl<E: RequiredField<I>, const I: u8> RequiredFieldData<E, I> {
             get_from_styles: |_| None,
             materialize: |_, _| {},
             eq: |a, b| (E::FIELD.get)(a) == (E::FIELD.get)(b),
+            rust_type_raw: || ::std::any::type_name::<<E::Type as Container>::Inner>(),
         }
     }
 }
@@ -182,6 +184,7 @@ impl<E: SynthesizedField<I>, const I: u8> SynthesizedFieldData<E, I> {
             materialize: |_, _| {},
             // Synthesized fields don't affect equality.
             eq: |_, _| true,
+            rust_type_raw: || ::std::any::type_name::<E::Type>(),
         }
     }
 }
@@ -235,6 +238,7 @@ impl<E: ExternalField<I>, const I: u8> ExternalFieldData<E, I> {
             get_from_styles: |_| None,
             materialize: |_, _| {},
             eq: |_, _| true,
+            rust_type_raw: || ::std::any::type_name::<E::Type>(),
         }
     }
 }
@@ -317,6 +321,7 @@ impl<E: SettableField<I>, const I: u8> SettableFieldData<E, I> {
                 }
             },
             eq: |a, b| (E::FIELD.get)(a).as_option() == (E::FIELD.get)(b).as_option(),
+            rust_type_raw: || ::std::any::type_name::<E::Type>(),
         }
     }
 }
@@ -428,6 +433,7 @@ impl<E: SettableProperty<I>, const I: u8> SettablePropertyData<E, I> {
             },
             materialize: |_, _| {},
             eq: |_, _| true,
+            rust_type_raw: || ::std::any::type_name::<E::Type>(),
         }
     }
 }

@@ -191,13 +191,13 @@ fn field_access_completions(
         }
     }
 
-    for &field in fields_on(value.ty()) {
+    for field in fields_on(value.ty()) {
         // Complete the field name along with its value. Notes:
         // 1. No parentheses since function fields cannot currently be called
         // with method syntax;
         // 2. We can unwrap the field's value since it's a field belonging to
         // this value's type, so accessing it should not fail.
-        ctx.value_completion(field, &value.field(field, ()).unwrap());
+        ctx.value_completion(field.name, &value.field(field.name, ()).unwrap());
     }
 
     match value {

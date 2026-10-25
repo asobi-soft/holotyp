@@ -416,6 +416,7 @@ fn create_param_info(param: &Param, parent_def_site_key: &str) -> TokenStream {
     let def_site_key = format!("{parent_def_site_key}::{ident}");
     let positional = !named;
     let required = !named && default.is_none();
+    let rust_type_raw = quote! { ::std::any::type_name::<#ty>() };
     let ty = if *variadic || (*named && default.is_none()) {
         quote! { <#ty as #foundations::Container>::Inner }
     } else {
@@ -441,6 +442,7 @@ fn create_param_info(param: &Param, parent_def_site_key: &str) -> TokenStream {
             variadic: #variadic,
             required: #required,
             settable: false,
+            rust_type_raw: #rust_type_raw,
         }
     }
 }

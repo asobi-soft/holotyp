@@ -351,6 +351,9 @@ pub struct FieldVtable<T: 'static = RawContent> {
     pub(super) materialize: unsafe fn(elem: &mut T, styles: StyleChain),
     /// Compares the field for equality.
     pub(super) eq: unsafe fn(a: &T, b: &T) -> bool,
+    // HT: expose the erased field type for the manifest's cast shapes.
+    /// The field's Rust type, as reported by [`std::any::type_name`].
+    pub(super) rust_type_raw: fn() -> &'static str,
 }
 
 impl FieldHandle<&RawContent> {
