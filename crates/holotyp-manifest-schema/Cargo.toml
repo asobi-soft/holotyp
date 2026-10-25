@@ -1,0 +1,15 @@
+[package]
+name = "holotyp-manifest-schema"
+description = "Rust types for the Holotyp manifest."
+version = { workspace = true }
+rust-version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = false
+
+[dependencies]
+serde = { workspace = true }
+
+[lints]
+workspace = true

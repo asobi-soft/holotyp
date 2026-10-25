@@ -109,6 +109,21 @@ pub enum Command {
 
     /// Displays debugging information about Typst.
     Info(InfoCommand),
+
+    /// Dumps the built-in library manifest.
+    Manifest(ManifestCommand),
+}
+
+/// Dumps the built-in library manifest.
+#[derive(Debug, Clone, Parser)]
+pub struct ManifestCommand {
+    /// Enable library features (comma separated: html,bundle,a11y-extras)
+    #[arg(long, value_delimiter = ',', env = "TYPST_FEATURES")]
+    pub features: Vec<Feature>,
+
+    /// Pretty-print the JSON output
+    #[arg(long)]
+    pub pretty: bool,
 }
 
 /// Compiles an input file into a supported output format.

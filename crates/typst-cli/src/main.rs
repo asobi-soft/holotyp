@@ -8,6 +8,7 @@ mod fonts;
 mod greet;
 mod info;
 mod init;
+mod manifest;
 mod packages;
 mod query;
 mod terminal;
@@ -77,6 +78,7 @@ fn dispatch() -> HintedStrResult<()> {
         Command::Update(command) => crate::update::update(command)?,
         Command::Completions(command) => crate::completions::completions(command),
         Command::Info(command) => crate::info::info(command)?,
+        Command::Manifest(command) => crate::manifest::manifest(command)?,
     }
     Ok(())
 }
