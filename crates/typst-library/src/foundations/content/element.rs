@@ -141,6 +141,7 @@ impl Element {
                     variadic: field.variadic,
                     required: field.required,
                     settable: field.settable,
+                    rust_type_raw: (field.rust_type_raw)(),
                 })
                 .collect()
         })

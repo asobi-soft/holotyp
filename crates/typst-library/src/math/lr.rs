@@ -249,6 +249,7 @@ fn create_lr_param_info() -> Vec<NativeParamInfo> {
             variadic: false,
             required: false,
             settable: false,
+            rust_type_raw: ::std::any::type_name::<Rel<Length>>(),
         },
         NativeParamInfo {
             name: "body",
@@ -261,6 +262,7 @@ fn create_lr_param_info() -> Vec<NativeParamInfo> {
             variadic: false,
             required: true,
             settable: false,
+            rust_type_raw: ::std::any::type_name::<Content>(),
         },
     ]
 }

@@ -85,6 +85,7 @@ fn create_param_info(element: &'static data::ElemInfo) -> Vec<NativeParamInfo> {
             variadic: false,
             required: false,
             settable: false,
+            rust_type_raw: "",
         });
     }
     let tag = HtmlTag::constant(element.name);
@@ -109,6 +110,7 @@ fn create_param_info(element: &'static data::ElemInfo) -> Vec<NativeParamInfo> {
             variadic: false,
             required: false,
             settable: false,
+            rust_type_raw: "",
         });
     }
     params

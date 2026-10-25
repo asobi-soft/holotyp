@@ -3,9 +3,21 @@
 use ecow::{EcoString, eco_format};
 
 use crate::diag::StrResult;
-use crate::foundations::{IntoValue, Type, Value, Version};
-use crate::layout::{Alignment, Length, Rel};
-use crate::visualize::Stroke;
+use crate::foundations::{CastInfo, IntoValue, Reflect, Smart, Type, Value, Version};
+use crate::layout::{Alignment, Length, Ratio, Rel};
+use crate::visualize::{DashPattern, LineCap, LineJoin, Paint, Stroke};
+
+/// A named field on a value.
+///
+/// Unlike a type's scope, these are read directly off the value and cannot be
+/// set.
+#[derive(Debug, Clone, Copy)]
+pub struct FieldInfo {
+    /// The field's name.
+    pub name: &'static str,
+    /// What the field's value can be cast into.
+    pub output: fn() -> CastInfo,
+}
 
 /// Try to access a field on a value.
 ///
@@ -74,17 +86,44 @@ fn missing_field(ty: Type, field: &str) -> EcoString {
 }
 
 /// List the available fields for a type.
-pub fn fields_on(ty: Type) -> &'static [&'static str] {
+pub fn fields_on(ty: Type) -> &'static [FieldInfo] {
+    fn output<T: Reflect + ?Sized>() -> CastInfo {
+        T::output()
+    }
+
     if ty == Type::of::<Version>() {
-        &Version::COMPONENTS
+        &[
+            FieldInfo { name: "major", output: output::<i64> },
+            FieldInfo { name: "minor", output: output::<i64> },
+            FieldInfo { name: "patch", output: output::<i64> },
+        ]
     } else if ty == Type::of::<Length>() {
-        &["em", "abs"]
+        &[
+            FieldInfo { name: "em", output: output::<f64> },
+            FieldInfo { name: "abs", output: output::<Length> },
+        ]
     } else if ty == Type::of::<Rel>() {
-        &["ratio", "length"]
+        &[
+            FieldInfo { name: "ratio", output: output::<Ratio> },
+            FieldInfo { name: "length", output: output::<Length> },
+        ]
     } else if ty == Type::of::<Stroke>() {
-        &["paint", "thickness", "cap", "join", "dash", "miter-limit"]
+        &[
+            FieldInfo { name: "paint", output: output::<Smart<Paint>> },
+            FieldInfo { name: "thickness", output: output::<Smart<Length>> },
+            FieldInfo { name: "cap", output: output::<Smart<LineCap>> },
+            FieldInfo { name: "join", output: output::<Smart<LineJoin>> },
+            FieldInfo {
+                name: "dash",
+                output: output::<Smart<Option<DashPattern>>>,
+            },
+            FieldInfo { name: "miter-limit", output: output::<Smart<f64>> },
+        ]
     } else if ty == Type::of::<Alignment>() {
-        &["x", "y"]
+        &[
+            FieldInfo { name: "x", output: output::<Option<Alignment>> },
+            FieldInfo { name: "y", output: output::<Option<Alignment>> },
+        ]
     } else {
         &[]
     }

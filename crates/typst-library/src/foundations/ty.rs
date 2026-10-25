@@ -10,8 +10,8 @@ use typst_utils::{DefSite, Static};
 
 use crate::diag::{HintedStrResult, StrResult, bail};
 use crate::foundations::{
-    AutoValue, BindingAccess, BindingGuard, Func, NativeFuncData, NoneValue, Repr, Scope,
-    Since, Value, cast, func,
+    AutoValue, BindingAccess, BindingGuard, CastInfo, Func, NativeFuncData, NoneValue,
+    Repr, Scope, Since, Value, cast, func,
 };
 
 /// Describes a kind of value.
@@ -69,6 +69,21 @@ impl Type {
     /// Get the type for `T`.
     pub fn of<T: NativeType>() -> Self {
         T::ty()
+    }
+
+    // HT: runtime accessor for the manifest's type mapping.
+    /// The Rust type behind this runtime `Type`.
+    pub fn rust_type_raw(&self) -> &'static str {
+        (self.0.rust_type_raw)()
+    }
+
+    // HT: runtime accessor for the manifest's automatic cast matrix.
+    /// What values can be cast into this type.
+    pub fn input(&self) -> CastInfo {
+        match self.0.input {
+            Some(input) => input(),
+            None => CastInfo::Type(*self),
+        }
     }
 
     /// The type's short name, how it is used in code (e.g. `str`).
@@ -231,6 +246,13 @@ pub struct NativeTypeData {
     pub constructor: LazyLock<Option<&'static NativeFuncData>>,
     /// Definitions in the scope of the type.
     pub scope: LazyLock<Scope>,
+    // HT: lets tooling map a runtime `Type` to its Rust type.
+    /// The Rust type, as reported by [`std::any::type_name`].
+    pub rust_type_raw: fn() -> &'static str,
+    // HT: lets tooling walk the cast graph from a runtime `Type`.
+    /// What values can be cast into this type. `None` means the type only
+    /// accepts its own values.
+    pub input: Option<fn() -> CastInfo>,
 }
 
 impl From<&'static NativeTypeData> for Type {

@@ -778,6 +778,9 @@ pub struct NativeParamInfo {
     pub required: bool,
     /// Is the parameter settable with a set rule?
     pub settable: bool,
+    // HT: expose the erased parameter type for the manifest's cast shapes.
+    /// The declared Rust type, as reported by [`std::any::type_name`].
+    pub rust_type_raw: &'static str,
 }
 
 /// Distinguishes between variants of closures.
