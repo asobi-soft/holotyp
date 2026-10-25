@@ -152,6 +152,10 @@ xmlwriter = "0.1.0"
 xz2 = { version = "0.1", features = ["static"] }
 zip = { version = "8", default-features = false, features = ["deflate"] }
 
+# Holotyp
+holotyp-manifest = { path = "crates/holotyp-manifest", version = "0.15.1" }
+holotyp-manifest-schema = { path = "crates/holotyp-manifest-schema", version = "0.15.1" }
+
 [profile.dev.package."*"]
 opt-level = 2
 

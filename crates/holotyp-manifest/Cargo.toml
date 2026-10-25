@@ -1,0 +1,28 @@
+[package]
+name = "holotyp-manifest"
+description = "Reflects the built-in standard library of a Typst (fork) build into a versioned manifest JSON."
+version = { workspace = true }
+rust-version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = false
+
+[dependencies]
+holotyp-manifest-schema = { workspace = true }
+typst = { workspace = true }
+typst-bundle = { workspace = true }
+typst-html = { workspace = true }
+typst-render = { workspace = true }
+typst-svg = { workspace = true }
+typst-library = { workspace = true }
+ecow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[features]
+default = []
+embed = []
+
+[lints]
+workspace = true
