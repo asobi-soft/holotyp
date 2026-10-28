@@ -9,7 +9,7 @@ use typst_library::visualize::{FillRule, Paint, RelativeTo};
 
 use crate::path::SvgPathBuilder;
 use crate::write::{SvgElem, SvgIdRef, SvgTransform};
-use crate::{DedupId, SVGRenderer, State};
+use crate::{DedupId, SVGRenderer, State, one_def};
 
 /// Represents a glyph to be rendered.
 #[derive(Clone)]
@@ -178,9 +178,33 @@ impl SVGRenderer<'_> {
         }
     }
 
+    /// Writes one glyph definition into a `<defs>` parent.
+    fn write_glyph(&mut self, defs: &mut SvgElem, id: DedupId, glyph: &RenderedGlyph) {
+        let mut symbol = defs.elem("symbol");
+        symbol.attr("id", id);
+        symbol.attr("overflow", "visible");
+
+        match glyph {
+            RenderedGlyph::Frame(frame) => {
+                let state = State::new(frame.size()).pre_translate(frame.item.pos());
+                match &frame.item {
+                    GlyphFrameItem::Tofu(_, shape) => {
+                        self.render_shape(&mut symbol, &state, shape);
+                    }
+                    GlyphFrameItem::Image(_, image, size) => {
+                        self.render_image(&mut symbol, &state, image, size);
+                    }
+                }
+            }
+            RenderedGlyph::Path(path) => {
+                symbol.elem("path").attr("d", path);
+            }
+        }
+    }
+
     /// Build the glyph definitions.
     pub(super) fn write_glyph_defs(&mut self, svg: &mut SvgElem) {
-        if self.glyphs.iter().all(|(_, g)| g.is_none()) {
+        if self.glyphs.iter().all(|(_, glyph)| glyph.is_none()) {
             return;
         }
 
@@ -188,31 +212,34 @@ impl SVGRenderer<'_> {
         let glyphs = std::mem::take(&mut self.glyphs);
         for (id, glyph) in glyphs.iter() {
             let Some(glyph) = glyph else { continue };
-
-            let mut symbol = defs.elem("symbol");
-            symbol.attr("id", id);
-            symbol.attr("overflow", "visible");
-
-            match glyph {
-                RenderedGlyph::Frame(frame) => {
-                    let state = State::new(frame.size()).pre_translate(frame.item.pos());
-                    match &frame.item {
-                        GlyphFrameItem::Tofu(_, shape) => {
-                            self.render_shape(&mut symbol, &state, shape);
-                        }
-                        GlyphFrameItem::Image(_, image, size) => {
-                            self.render_image(&mut symbol, &state, image, size);
-                        }
-                    }
-                }
-                RenderedGlyph::Path(path) => {
-                    symbol.elem("path").attr("d", path);
-                }
-            }
+            self.write_glyph(&mut defs, id, glyph);
         }
 
         // The glyphs have been taken above, there shouldn't be any new glyphs
         // produced from writing the glyph definitions.
         assert!(self.glyphs.is_empty());
+    }
+
+    /// The glyph definitions from `from` onward, as (id, element)
+    pub(super) fn glyph_defs(&mut self, from: usize) -> Vec<(String, String)> {
+        if self.glyphs.iter().skip(from).all(|(_, glyph)| glyph.is_none()) {
+            return Vec::new();
+        }
+
+        let glyphs = std::mem::take(&mut self.glyphs);
+        let defs = glyphs
+            .iter()
+            .skip(from)
+            .filter_map(|(id, glyph)| {
+                let glyph = glyph.as_ref()?;
+                Some(one_def(id, |defs| self.write_glyph(defs, id, glyph)))
+            })
+            .collect();
+
+        // The glyphs have been taken above, there shouldn't be any new glyphs
+        // produced from writing the glyph definitions.
+        assert!(self.glyphs.is_empty());
+        self.glyphs = glyphs;
+        defs
     }
 }
