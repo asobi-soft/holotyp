@@ -28,7 +28,10 @@ use xmlwriter::XmlWriter;
 
 use crate::paint::{GradientRef, SVGSubGradient, TilingRef};
 use crate::text::RenderedGlyph;
-use crate::write::{SvgDisplay, SvgElem, SvgTransform, SvgUrl, SvgWrite};
+use crate::write::{SvgDisplay, SvgElem, SvgFormatter, SvgTransform, SvgUrl, SvgWrite};
+
+pub mod ht;
+pub use ht::{Fragment, SvgSession};
 
 /// Export a frame into an SVG file.
 #[typst_macros::time(name = "svg")]
@@ -432,6 +435,21 @@ impl<'a> SVGRenderer<'a> {
         self.write_tiling_refs(&mut svg);
     }
 
+    /// Writes one clip path into a `<defs>` parent.
+    fn write_clip_path(defs: &mut SvgElem, id: DedupId, path: &EcoString) {
+        defs.elem("clipPath").attr("id", id).with(|svg| {
+            svg.elem("path").attr("d", path);
+        });
+    }
+
+    /// The clip paths, as (id, element).
+    fn clip_path_defs(&self) -> Vec<(String, String)> {
+        self.clip_paths
+            .iter()
+            .map(|(id, path)| one_def(id, |defs| Self::write_clip_path(defs, id, path)))
+            .collect()
+    }
+
     /// Build the clip path definitions.
     fn write_clip_path_defs(&self, svg: &mut SvgElem) {
         if self.clip_paths.is_empty() {
@@ -440,11 +458,24 @@ impl<'a> SVGRenderer<'a> {
 
         let mut defs = svg.elem("defs");
         for (id, path) in self.clip_paths.iter() {
-            defs.elem("clipPath").attr("id", id).with(|svg| {
-                svg.elem("path").attr("d", path);
-            });
+            Self::write_clip_path(&mut defs, id, path);
         }
     }
+}
+
+/// Renders one definition on its own, as `(id, element)`.
+fn one_def(id: DedupId, write: impl FnOnce(&mut SvgElem)) -> (String, String) {
+    let mut xml = XmlWriter::new(xml_options(false));
+    {
+        let mut defs = SvgElem::new(&mut xml, "defs");
+        write(&mut defs);
+    }
+    let block = xml.end_document();
+    let element = block
+        .strip_prefix("<defs>")
+        .and_then(|rest| rest.strip_suffix("</defs>"))
+        .unwrap_or(block.as_str());
+    (id.to_string(), element.to_owned())
 }
 
 /// Write the default SVG header, including a `typst-doc` class, the
@@ -539,6 +570,14 @@ impl<T> Deduplicator<T> {
 /// Identifies a `<def>`.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 struct DedupId(char, u128);
+
+impl std::fmt::Display for DedupId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = EcoString::new();
+        SvgDisplay::fmt(self, &mut SvgFormatter::new(&mut buf));
+        f.write_str(&buf)
+    }
+}
 
 impl SvgDisplay for DedupId {
     fn fmt(&self, f: &mut impl SvgWrite) {

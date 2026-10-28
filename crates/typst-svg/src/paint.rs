@@ -11,11 +11,10 @@ use xmlwriter::XmlWriter;
 
 use crate::path::SvgPathBuilder;
 use crate::write::{SvgDisplay, SvgElem, SvgIdRef, SvgTransform, SvgUrl, SvgWrite};
-use crate::{DedupId, SVGRenderer, State};
+use crate::{DedupId, SVGRenderer, State, one_def};
 
-/// The number of segments in a conic gradient.
-/// This is a heuristic value that seems to work well.
-/// Smaller values could be interesting for optimization.
+/// The number of segments in a conic gradient. This is a heuristic value that seems to
+/// work well. Smaller values could be interesting for optimization.
 const NUM_CONIC_SEGMENTS: usize = 360;
 
 impl SVGRenderer<'_> {
@@ -58,11 +57,10 @@ impl SVGRenderer<'_> {
 
     /// Pushes a gradient to the list of gradients to write SVG file.
     ///
-    /// If the gradient is already present, returns the id of the existing
-    /// gradient. Otherwise, inserts the gradient and returns the id of the
-    /// inserted gradient. If the transform of the gradient is the identify
-    /// matrix, the returned ID will be the ID of the "source" gradient,
-    /// this is a file size optimization.
+    /// If the gradient is already present, returns the id of the existing gradient.
+    /// Otherwise, inserts the gradient and returns the id of the inserted gradient. If
+    /// the transform of the gradient is the identify matrix, the returned ID will be the
+    /// ID of the "source" gradient, this is a file size optimization.
     pub(super) fn push_gradient(
         &mut self,
         gradient: &Gradient,
@@ -88,13 +86,13 @@ impl SVGRenderer<'_> {
         let tiling_size = tiling.size() + tiling.spacing();
         let tiling_offset = tiling.offset();
         let tiling_angle = tiling.angle();
-        // Unfortunately due to a limitation of `xmlwriter`, we need to
-        // render the frame twice: once to allocate all of the resources
-        // that it needs and once to actually render it.
+        // Unfortunately due to a limitation of `xmlwriter`, we need to render the frame
+        // twice: once to allocate all of the resources that it needs and once to actually
+        // render it.
         let rendered = self.render_tiling_frame(&State::new(tiling_size), tiling.frame());
 
-        // Use the rendered SVG and the tiling's properties as a key, since the
-        // `Tiling` itself includes `Location`s which aren't stable.
+        // Use the rendered SVG and the tiling's properties as a key, since the `Tiling`
+        // itself includes `Location`s which aren't stable.
         let tiling_id = self.tilings.insert_with(
             (tiling_size, tiling_offset, tiling_angle, rendered.as_str()),
             || tiling.clone(),
@@ -104,10 +102,10 @@ impl SVGRenderer<'_> {
             return tiling_id;
         }
 
-        // The tiling reference is written as a SVG `pattern` with a `href`
-        // attribute, which will overwrite the `patternTransform` of the
-        // referenced pattern. Thus any pre-existing `patternTransform` of the
-        // referenced pattern needs to be concatenated.
+        // The tiling reference is written as a SVG `pattern` with a `href` attribute,
+        // which will overwrite the `patternTransform` of the referenced pattern. Thus any
+        // pre-existing `patternTransform` of the referenced pattern needs to be
+        // concatenated.
         let transform = ts.pre_concat(tiling.transform());
         let tiling_ref = TilingRef { id: tiling_id, transform };
         self.tiling_refs.insert_with(tiling_ref, || tiling_ref)
@@ -120,166 +118,190 @@ impl SVGRenderer<'_> {
         }
 
         let mut defs = svg.elem("defs");
-        for (id, (gradient, aspect_ratio)) in self.gradients.iter() {
-            let mut svg = match &gradient {
-                Gradient::Linear(linear) => {
-                    let mut gradient = defs.elem("linearGradient");
-                    gradient.attr("id", id);
-                    gradient.attr("spreadMethod", "pad");
-                    gradient.attr("gradientUnits", "userSpaceOnUse");
+        for (id, (gradient, aspect_ratio)) in self.gradient_snapshot() {
+            self.write_gradient(&mut defs, id, &gradient, aspect_ratio);
+        }
+    }
 
-                    let angle =
-                        Gradient::correct_aspect_ratio(linear.angle, *aspect_ratio);
-                    let (sin, cos) = (angle.sin(), angle.cos());
+    /// The raw gradients, as (id, element)
+    pub(super) fn gradient_defs(&mut self) -> Vec<(String, String)> {
+        self.gradient_snapshot()
+            .into_iter()
+            .map(|(id, (gradient, aspect_ratio))| {
+                one_def(id, |defs| self.write_gradient(defs, id, &gradient, aspect_ratio))
+            })
+            .collect()
+    }
 
-                    // Scale to edges of unit square.
-                    let factor = sin.abs() + cos.abs();
+    /// A snapshot of the gradients, since writing one adds conic sub-gradients.
+    fn gradient_snapshot(&self) -> Vec<(DedupId, (Gradient, Ratio))> {
+        self.gradients
+            .iter()
+            .map(|(id, gradient)| (id, gradient.clone()))
+            .collect()
+    }
 
-                    let (x1, y1) = match angle.quadrant() {
-                        Quadrant::First => (0.0, 0.0),
-                        Quadrant::Second => (1.0, 0.0),
-                        Quadrant::Third => (1.0, 1.0),
-                        Quadrant::Fourth => (0.0, 1.0),
+    /// Writes one gradient definition into a `<defs>` parent.
+    fn write_gradient(
+        &mut self,
+        defs: &mut SvgElem,
+        id: DedupId,
+        gradient: &Gradient,
+        aspect_ratio: Ratio,
+    ) {
+        let mut svg = match gradient {
+            Gradient::Linear(linear) => {
+                let mut gradient = defs.elem("linearGradient");
+                gradient.attr("id", id);
+                gradient.attr("spreadMethod", "pad");
+                gradient.attr("gradientUnits", "userSpaceOnUse");
+
+                let angle = Gradient::correct_aspect_ratio(linear.angle, aspect_ratio);
+                let (sin, cos) = (angle.sin(), angle.cos());
+
+                // Scale to edges of unit square.
+                let factor = sin.abs() + cos.abs();
+
+                let (x1, y1) = match angle.quadrant() {
+                    Quadrant::First => (0.0, 0.0),
+                    Quadrant::Second => (1.0, 0.0),
+                    Quadrant::Third => (1.0, 1.0),
+                    Quadrant::Fourth => (0.0, 1.0),
+                };
+                let x2 = x1 + (cos * factor);
+                let y2 = y1 + (sin * factor);
+
+                gradient.attr("x1", x1);
+                gradient.attr("y1", y1);
+                gradient.attr("x2", x2);
+                gradient.attr("y2", y2);
+
+                gradient
+            }
+            Gradient::Radial(radial) => {
+                let mut gradient = defs.elem("radialGradient");
+                gradient.attr("id", id);
+                gradient.attr("spreadMethod", "pad");
+                gradient.attr("gradientUnits", "userSpaceOnUse");
+                gradient.attr("cx", radial.center.x.get());
+                gradient.attr("cy", radial.center.y.get());
+                gradient.attr("r", radial.radius.get());
+                gradient.attr("fx", radial.focal_center.x.get());
+                gradient.attr("fy", radial.focal_center.y.get());
+                gradient.attr("fr", radial.focal_radius.get());
+                gradient
+            }
+            Gradient::Conic(conic) => {
+                let mut pattern = defs.elem("pattern");
+                pattern.attr("id", id);
+                pattern.attr("viewBox", "0 0 1 1");
+                pattern.attr("preserveAspectRatio", "none");
+                pattern.attr("patternUnits", "userSpaceOnUse");
+                pattern.attr("width", "2");
+                pattern.attr("height", "2");
+                // TODO: Refactor this.
+                pattern.attr("x", "-0.5");
+                pattern.attr("y", "-0.5");
+
+                let center = conic.center;
+
+                // Correct the angles with the inverse aspect-ratio, to compensate for the
+                // transformation that is applied later on to the gradient fill.
+                let inverse_ratio = aspect_ratio.recip();
+
+                // We build an arg segment for each segment of a circle.
+                let dtheta = Angle::rad(TAU / NUM_CONIC_SEGMENTS as f64);
+                for i in 0..NUM_CONIC_SEGMENTS {
+                    // Negate the angle for clockwise gradient rotation.
+                    let theta1 = -Gradient::correct_aspect_ratio(
+                        conic.angle + (dtheta * i as f64),
+                        inverse_ratio,
+                    );
+                    let theta2 = -Gradient::correct_aspect_ratio(
+                        conic.angle + (dtheta * (i + 1) as f64),
+                        inverse_ratio,
+                    );
+
+                    // Create the path for the segment.
+                    let mut builder = SvgPathBuilder::empty();
+                    builder.move_to(correct_tiling_pos(center.x, center.y));
+
+                    builder.line_to(correct_tiling_pos(
+                        Ratio::new(-2.0 * theta1.cos()) + center.x,
+                        Ratio::new(2.0 * theta1.sin()) + center.y,
+                    ));
+                    builder.arc(
+                        Size::splat(Abs::pt(1.0)),
+                        Angle::zero(),
+                        0,
+                        1,
+                        correct_tiling_pos(
+                            Ratio::new(-2.0 * theta2.cos()) + center.x,
+                            Ratio::new(2.0 * theta2.sin()) + center.y,
+                        ),
+                    );
+                    builder.close();
+
+                    let t1 = (i as f64) / NUM_CONIC_SEGMENTS as f64;
+                    let t2 = (i + 1) as f64 / NUM_CONIC_SEGMENTS as f64;
+                    let subgradient = SVGSubGradient {
+                        center: conic.center,
+                        t0: theta1,
+                        t1: theta2,
+                        c0: gradient.sample(RatioOrAngle::Ratio(Ratio::new(t1))),
+                        c1: gradient.sample(RatioOrAngle::Ratio(Ratio::new(t2))),
                     };
-                    let x2 = x1 + (cos * factor);
-                    let y2 = y1 + (sin * factor);
+                    let id = self
+                        .conic_subgradients
+                        .insert_with(subgradient.clone(), || subgradient);
 
-                    gradient.attr("x1", x1);
-                    gradient.attr("y1", y1);
-                    gradient.attr("x2", x2);
-                    gradient.attr("y2", y2);
-
-                    gradient
+                    // Add the path to the pattern.
+                    pattern
+                        .elem("path")
+                        .attr("d", builder.finish())
+                        .attr("fill", SvgUrl(id))
+                        .attr("stroke", "none")
+                        .attr("shape-rendering", "optimizeSpeed");
                 }
-                Gradient::Radial(radial) => {
-                    let mut gradient = defs.elem("radialGradient");
-                    gradient.attr("id", id);
-                    gradient.attr("spreadMethod", "pad");
-                    gradient.attr("gradientUnits", "userSpaceOnUse");
-                    gradient.attr("cx", radial.center.x.get());
-                    gradient.attr("cy", radial.center.y.get());
-                    gradient.attr("r", radial.radius.get());
-                    gradient.attr("fx", radial.focal_center.x.get());
-                    gradient.attr("fy", radial.focal_center.y.get());
-                    gradient.attr("fr", radial.focal_radius.get());
-                    gradient
-                }
-                Gradient::Conic(conic) => {
-                    let mut pattern = defs.elem("pattern");
-                    pattern.attr("id", id);
-                    pattern.attr("viewBox", "0 0 1 1");
-                    pattern.attr("preserveAspectRatio", "none");
-                    pattern.attr("patternUnits", "userSpaceOnUse");
-                    pattern.attr("width", "2");
-                    pattern.attr("height", "2");
-                    // TODO: Refactor this.
-                    pattern.attr("x", "-0.5");
-                    pattern.attr("y", "-0.5");
 
-                    let center = conic.center;
+                // We skip the default stop generation code.
+                return;
+            }
+        };
 
-                    // Correct the angles with the inverse aspect-ratio, to
-                    // compensate for the transformation that is applied later
-                    // on to the gradient fill.
-                    let inverse_ratio = aspect_ratio.recip();
+        // Unwraps of to_space with this and the stops are safe since the stops have been
+        // checked before to be compatible with the gradient.
+        let gradient_space = gradient.space();
 
-                    // We build an arg segment for each segment of a circle.
-                    let dtheta = Angle::rad(TAU / NUM_CONIC_SEGMENTS as f64);
-                    for i in 0..NUM_CONIC_SEGMENTS {
-                        // Negate the angle for clockwise gradient rotation.
-                        let theta1 = -Gradient::correct_aspect_ratio(
-                            conic.angle + (dtheta * i as f64),
-                            inverse_ratio,
-                        );
-                        let theta2 = -Gradient::correct_aspect_ratio(
-                            conic.angle + (dtheta * (i + 1) as f64),
-                            inverse_ratio,
-                        );
+        for window in gradient.stops_ref().windows(2) {
+            let (start_c, start_t) = &window[0];
+            let (end_c, end_t) = &window[1];
 
-                        // Create the path for the segment.
-                        let mut builder = SvgPathBuilder::empty();
-                        builder.move_to(correct_tiling_pos(center.x, center.y));
+            svg.elem("stop")
+                .attr("offset", start_t.repr())
+                .attr("stop-color", start_c.to_space(&gradient_space).unwrap().to_hex());
 
-                        builder.line_to(correct_tiling_pos(
-                            Ratio::new(-2.0 * theta1.cos()) + center.x,
-                            Ratio::new(2.0 * theta1.sin()) + center.y,
-                        ));
-                        builder.arc(
-                            Size::splat(Abs::pt(1.0)),
-                            Angle::zero(),
-                            0,
-                            1,
-                            correct_tiling_pos(
-                                Ratio::new(-2.0 * theta2.cos()) + center.x,
-                                Ratio::new(2.0 * theta2.sin()) + center.y,
-                            ),
-                        );
-                        builder.close();
-
-                        let t1 = (i as f64) / NUM_CONIC_SEGMENTS as f64;
-                        let t2 = (i + 1) as f64 / NUM_CONIC_SEGMENTS as f64;
-                        let subgradient = SVGSubGradient {
-                            center: conic.center,
-                            t0: theta1,
-                            t1: theta2,
-                            c0: gradient.sample(RatioOrAngle::Ratio(Ratio::new(t1))),
-                            c1: gradient.sample(RatioOrAngle::Ratio(Ratio::new(t2))),
-                        };
-                        let id = self
-                            .conic_subgradients
-                            .insert_with(subgradient.clone(), || subgradient);
-
-                        // Add the path to the pattern.
-                        pattern
-                            .elem("path")
-                            .attr("d", builder.finish())
-                            .attr("fill", SvgUrl(id))
-                            .attr("stroke", "none")
-                            .attr("shape-rendering", "optimizeSpeed");
-                    }
-
-                    // We skip the default stop generation code.
-                    continue;
-                }
-            };
-
-            // Unwraps of to_space with this and the stops are safe since the
-            // stops have been checked before to be compatible with the
+            // Generate intermediate stops between the two stops. This is a workaround for
+            // a bug in many readers: They tend to just ignore the color space of the
             // gradient.
-            let gradient_space = gradient.space();
-
-            for window in gradient.stops_ref().windows(2) {
-                let (start_c, start_t) = &window[0];
-                let (end_c, end_t) = &window[1];
-
-                svg.elem("stop").attr("offset", start_t.repr()).attr(
-                    "stop-color",
-                    start_c.to_space(&gradient_space).unwrap().to_hex(),
-                );
-
-                // Generate intermediate stops between the two stops.
-                // This is a workaround for a bug in many readers:
-                // They tend to just ignore the color space of the gradient.
-                if end_t > start_t && gradient.anti_alias() {
-                    let start = GradientStop::new(start_c.clone(), *start_t);
-                    let end = GradientStop::new(end_c.clone(), *end_t);
-                    gradient
-                        .generate_intermediate_stops_for_rgb_interpolation(&start, &end)
-                        .for_each(|(c, t)| {
-                            let c = c.to_space(&gradient.space()).unwrap();
-                            svg.elem("stop")
-                                .attr("offset", t.repr())
-                                .attr("stop-color", c.to_hex());
-                        });
-                }
+            if end_t > start_t && gradient.anti_alias() {
+                let start = GradientStop::new(start_c.clone(), *start_t);
+                let end = GradientStop::new(end_c.clone(), *end_t);
+                gradient
+                    .generate_intermediate_stops_for_rgb_interpolation(&start, &end)
+                    .for_each(|(c, t)| {
+                        let c = c.to_space(&gradient.space()).unwrap();
+                        svg.elem("stop")
+                            .attr("offset", t.repr())
+                            .attr("stop-color", c.to_hex());
+                    });
             }
+        }
 
-            if let Some((last_c, last_t)) = gradient.stops_ref().last() {
-                svg.elem("stop").attr("offset", last_t.repr()).attr(
-                    "stop-color",
-                    last_c.to_space(&gradient.space()).unwrap().to_hex(),
-                );
-            }
+        if let Some((last_c, last_t)) = gradient.stops_ref().last() {
+            svg.elem("stop")
+                .attr("offset", last_t.repr())
+                .attr("stop-color", last_c.to_space(&gradient.space()).unwrap().to_hex());
         }
     }
 
@@ -291,28 +313,48 @@ impl SVGRenderer<'_> {
 
         let mut defs = svg.elem("defs");
         for (id, gradient) in self.conic_subgradients.iter() {
-            let x1 = 2.0 - gradient.t0.cos() + gradient.center.x.get();
-            let y1 = gradient.t0.sin() + gradient.center.y.get();
-            let x2 = 2.0 - gradient.t1.cos() + gradient.center.x.get();
-            let y2 = gradient.t1.sin() + gradient.center.y.get();
-
-            defs.elem("linearGradient")
-                .attr("id", id)
-                .attr("gradientUnits", "objectBoundingBox")
-                .attr("x1", x1)
-                .attr("y1", y1)
-                .attr("x2", x2)
-                .attr("y2", y2)
-                .with(|svg| {
-                    svg.elem("stop")
-                        .attr("offset", "0%")
-                        .attr("stop-color", gradient.c0.to_hex());
-
-                    svg.elem("stop")
-                        .attr("offset", "100%")
-                        .attr("stop-color", gradient.c1.to_hex());
-                });
+            self.write_subgradient(&mut defs, id, gradient);
         }
+    }
+
+    /// The conic sub-gradients, as (id, element)
+    pub(super) fn subgradient_defs(&self) -> Vec<(String, String)> {
+        self.conic_subgradients
+            .iter()
+            .map(|(id, gradient)| {
+                one_def(id, |defs| self.write_subgradient(defs, id, gradient))
+            })
+            .collect()
+    }
+
+    /// Writes one conic sub-gradient into a `<defs>` parent.
+    fn write_subgradient(
+        &self,
+        defs: &mut SvgElem,
+        id: DedupId,
+        gradient: &SVGSubGradient,
+    ) {
+        let x1 = 2.0 - gradient.t0.cos() + gradient.center.x.get();
+        let y1 = gradient.t0.sin() + gradient.center.y.get();
+        let x2 = 2.0 - gradient.t1.cos() + gradient.center.x.get();
+        let y2 = gradient.t1.sin() + gradient.center.y.get();
+
+        defs.elem("linearGradient")
+            .attr("id", id)
+            .attr("gradientUnits", "objectBoundingBox")
+            .attr("x1", x1)
+            .attr("y1", y1)
+            .attr("x2", x2)
+            .attr("y2", y2)
+            .with(|svg| {
+                svg.elem("stop")
+                    .attr("offset", "0%")
+                    .attr("stop-color", gradient.c0.to_hex());
+
+                svg.elem("stop")
+                    .attr("offset", "100%")
+                    .attr("stop-color", gradient.c1.to_hex());
+            });
     }
 
     pub(super) fn write_gradient_refs(&mut self, svg: &mut SvgElem) {
@@ -322,19 +364,39 @@ impl SVGRenderer<'_> {
 
         let mut defs = svg.elem("defs");
         for (id, gradient_ref) in self.gradient_refs.iter() {
-            let (elem_name, transform_name) = match gradient_ref.kind {
-                GradientKind::Linear => ("linearGradient", "gradientTransform"),
-                GradientKind::Radial => ("radialGradient", "gradientTransform"),
-                GradientKind::Conic => ("pattern", "patternTransform"),
-            };
-            defs.elem(elem_name)
-                .attr(transform_name, SvgTransform(gradient_ref.transform))
-                .attr("id", id)
-                // Writing the href attribute to the "reference" gradient.
-                .attr("href", SvgIdRef(gradient_ref.id))
-                // Also writing the xlink:href attribute for compatibility.
-                .attr("xlink:href", SvgIdRef(gradient_ref.id));
+            self.write_gradient_ref(&mut defs, id, gradient_ref);
         }
+    }
+
+    /// The transformed gradient references, as (id, element)
+    pub(super) fn gradient_ref_defs(&self) -> Vec<(String, String)> {
+        self.gradient_refs
+            .iter()
+            .map(|(id, gradient_ref)| {
+                one_def(id, |defs| self.write_gradient_ref(defs, id, gradient_ref))
+            })
+            .collect()
+    }
+
+    /// Writes one transformed gradient reference into a `<defs>` parent.
+    fn write_gradient_ref(
+        &self,
+        defs: &mut SvgElem,
+        id: DedupId,
+        gradient_ref: &GradientRef,
+    ) {
+        let (elem_name, transform_name) = match gradient_ref.kind {
+            GradientKind::Linear => ("linearGradient", "gradientTransform"),
+            GradientKind::Radial => ("radialGradient", "gradientTransform"),
+            GradientKind::Conic => ("pattern", "patternTransform"),
+        };
+        defs.elem(elem_name)
+            .attr(transform_name, SvgTransform(gradient_ref.transform))
+            .attr("id", id)
+            // Writing the href attribute to the "reference" gradient.
+            .attr("href", SvgIdRef(gradient_ref.id))
+            // Also writing the xlink:href attribute for compatibility.
+            .attr("xlink:href", SvgIdRef(gradient_ref.id));
     }
 
     /// Write the raw tilings (without transform) to the SVG file.
@@ -344,26 +406,42 @@ impl SVGRenderer<'_> {
         }
 
         let mut defs = svg.elem("defs");
-        for (id, tiling) in
-            self.tilings.iter().map(|(i, p)| (i, p.clone())).collect::<Vec<_>>()
-        {
-            let size = tiling.size() + tiling.spacing();
-
-            defs.elem("pattern")
-                .attr("id", id)
-                .attr("width", size.x.to_pt())
-                .attr("height", size.y.to_pt())
-                .attr("patternUnits", "userSpaceOnUse")
-                .attr("patternTransform", SvgTransform(tiling.transform()))
-                .attr_with("viewBox", |attr| {
-                    attr.push_nums([0.0, 0.0, size.x.to_pt(), size.y.to_pt()]);
-                })
-                .with(|pattern| {
-                    // Render the frame.
-                    let state = State::new(size);
-                    self.render_frame(pattern, &state, tiling.frame());
-                });
+        for (id, tiling) in self.tiling_snapshot() {
+            self.write_tiling(&mut defs, id, &tiling);
         }
+    }
+
+    /// The raw tilings, as (id, element)
+    pub(super) fn tiling_defs(&mut self) -> Vec<(String, String)> {
+        self.tiling_snapshot()
+            .into_iter()
+            .map(|(id, tiling)| one_def(id, |defs| self.write_tiling(defs, id, &tiling)))
+            .collect()
+    }
+
+    /// A snapshot of the tilings, since writing one renders its frame.
+    fn tiling_snapshot(&self) -> Vec<(DedupId, Tiling)> {
+        self.tilings.iter().map(|(id, tiling)| (id, tiling.clone())).collect()
+    }
+
+    /// Writes one tiling into a `<defs>` parent.
+    fn write_tiling(&mut self, defs: &mut SvgElem, id: DedupId, tiling: &Tiling) {
+        let size = tiling.size() + tiling.spacing();
+
+        defs.elem("pattern")
+            .attr("id", id)
+            .attr("width", size.x.to_pt())
+            .attr("height", size.y.to_pt())
+            .attr("patternUnits", "userSpaceOnUse")
+            .attr("patternTransform", SvgTransform(tiling.transform()))
+            .attr_with("viewBox", |attr| {
+                attr.push_nums([0.0, 0.0, size.x.to_pt(), size.y.to_pt()]);
+            })
+            .with(|pattern| {
+                // Render the frame.
+                let state = State::new(size);
+                self.render_frame(pattern, &state, tiling.frame());
+            });
     }
 
     /// Writes the references to the deduplicated tilings for each usage site.
@@ -374,21 +452,36 @@ impl SVGRenderer<'_> {
 
         let mut defs = svg.elem("defs");
         for (id, tiling_ref) in self.tiling_refs.iter() {
-            defs.elem("pattern")
-                .attr("patternTransform", SvgTransform(tiling_ref.transform))
-                .attr("id", id)
-                // Writing the href attribute to the "reference" pattern.
-                .attr("href", SvgIdRef(tiling_ref.id))
-                // Also writing the xlink:href attribute for compatibility.
-                .attr("xlink:href", SvgIdRef(tiling_ref.id));
+            self.write_tiling_ref(&mut defs, id, tiling_ref);
         }
+    }
+
+    /// The transformed tiling references, as (id, element).
+    pub(super) fn tiling_ref_defs(&self) -> Vec<(String, String)> {
+        self.tiling_refs
+            .iter()
+            .map(|(id, tiling_ref)| {
+                one_def(id, |defs| self.write_tiling_ref(defs, id, tiling_ref))
+            })
+            .collect()
+    }
+
+    /// Writes one transformed tiling reference into a `<defs>` parent.
+    fn write_tiling_ref(&self, defs: &mut SvgElem, id: DedupId, tiling_ref: &TilingRef) {
+        defs.elem("pattern")
+            .attr("patternTransform", SvgTransform(tiling_ref.transform))
+            .attr("id", id)
+            // Writing the href attribute to the "reference" pattern.
+            .attr("href", SvgIdRef(tiling_ref.id))
+            // Also writing the xlink:href attribute for compatibility.
+            .attr("xlink:href", SvgIdRef(tiling_ref.id));
     }
 }
 
 /// A reference to a deduplicated tiling, with a transform matrix.
 ///
-/// Allows tilings to be reused across multiple invocations, simply by changing
-/// the transform matrix.
+/// Allows tilings to be reused across multiple invocations, simply by changing the
+/// transform matrix.
 #[derive(Copy, Clone, Hash)]
 pub struct TilingRef {
     /// The ID of the deduplicated gradient
@@ -399,14 +492,14 @@ pub struct TilingRef {
 
 /// A reference to a deduplicated gradient, with a transform matrix.
 ///
-/// Allows gradients to be reused across multiple invocations,
-/// simply by changing the transform matrix.
+/// Allows gradients to be reused across multiple invocations, simply by changing the
+/// transform matrix.
 #[derive(Hash)]
 pub struct GradientRef {
     /// The ID of the deduplicated gradient
     id: DedupId,
-    /// The gradient kind (used to determine the SVG element to use)
-    /// but without needing to clone the entire gradient.
+    /// The gradient kind (used to determine the SVG element to use) but without needing
+    /// to clone the entire gradient.
     kind: GradientKind,
     /// The transform matrix to apply to the gradient.
     transform: Transform,
