@@ -155,6 +155,9 @@ zip = { version = "8", default-features = false, features = ["deflate"] }
 # Holotyp
 holotyp-manifest = { path = "crates/holotyp-manifest", version = "0.15.1" }
 holotyp-manifest-schema = { path = "crates/holotyp-manifest-schema", version = "0.15.1" }
+holotyp-preview-protocol = { path = "crates/holotyp-preview-protocol", version = "0.15.1" }
+miniz_oxide = "0.9"
+ts-rs = { version = "12", features = ["serde-json-impl", "no-serde-warnings"] }
 
 [profile.dev.package."*"]
 opt-level = 2

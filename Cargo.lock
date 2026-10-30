@@ -766,7 +766,7 @@ checksum = "4a3d7db9596fecd151c5f638c0ee5d5bd487b6e0ea232e5dc96d5250f6f94b1d"
 dependencies = [
  "crc32fast",
  "libz-rs-sys",
- "miniz_oxide",
+ "miniz_oxide 0.8.5",
 ]
 
 [[package]]
@@ -1121,6 +1121,17 @@ name = "holotyp-manifest-schema"
 version = "0.15.1"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "holotyp-preview-protocol"
+version = "0.15.1"
+dependencies = [
+ "ciborium",
+ "clap",
+ "miniz_oxide 0.9.1",
+ "serde",
+ "ts-rs",
 ]
 
 [[package]]
@@ -1719,6 +1730,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "miniz_oxide"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b63fbc4a50860e98e7b2aa7804ded1db5cbc3aff9193adaff57a6931bf7c4b4c"
+dependencies = [
+ "adler2",
+]
+
+[[package]]
 name = "mio"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2150,7 +2170,7 @@ dependencies = [
  "crc32fast",
  "fdeflate",
  "flate2",
- "miniz_oxide",
+ "miniz_oxide 0.8.5",
 ]
 
 [[package]]
@@ -3044,6 +3064,29 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "winnow",
+]
+
+[[package]]
+name = "ts-rs"
+version = "12.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "756050066659291d47a554a9f558125db17428b073c5ffce1daf5dcb0f7231d8"
+dependencies = [
+ "serde_json",
+ "thiserror",
+ "ts-rs-macros",
+]
+
+[[package]]
+name = "ts-rs-macros"
+version = "12.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38d90eea51bc7988ef9e674bf80a85ba6804739e535e9cab48e4bb34a8b652aa"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.98",
+ "termcolor",
 ]
 
 [[package]]
