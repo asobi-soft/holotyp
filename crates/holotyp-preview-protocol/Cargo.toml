@@ -1,0 +1,22 @@
+[package]
+name = "holotyp-preview-protocol"
+description = "Wire types for the Holotyp preview protocol."
+version = { workspace = true }
+rust-version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = false
+
+[dependencies]
+ciborium = { workspace = true }
+clap = { workspace = true, optional = true }
+miniz_oxide = { workspace = true }
+serde = { workspace = true }
+ts-rs = { workspace = true }
+
+[features]
+clap = ["dep:clap"]
+
+[lints]
+workspace = true
