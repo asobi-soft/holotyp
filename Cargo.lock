@@ -1255,6 +1255,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "holotyp-preview"
+version = "0.15.1"
+dependencies = [
+ "ecow",
+ "holotyp-preview-protocol",
+ "typst",
+ "typst-assets",
+ "typst-layout",
+ "typst-library",
+ "typst-svg",
+]
+
+[[package]]
 name = "holotyp-preview-protocol"
 version = "0.15.1"
 dependencies = [
@@ -3587,6 +3600,7 @@ dependencies = [
  "ecow",
  "fs_extra",
  "holotyp-manifest",
+ "holotyp-preview-protocol",
  "holotyp-preview-viewer",
  "memchr",
  "open",
