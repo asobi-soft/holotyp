@@ -1,0 +1,23 @@
+[package]
+name = "holotyp-preview"
+description = "Holotyp preview engine."
+version = { workspace = true }
+rust-version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = false
+
+[dependencies]
+typst = { workspace = true }
+typst-library = { workspace = true }
+typst-layout = { workspace = true }
+typst-svg = { workspace = true }
+holotyp-preview-protocol = { workspace = true }
+ecow = { workspace = true }
+
+[dev-dependencies]
+typst-assets = { workspace = true, features = ["fonts"] }
+
+[lints]
+workspace = true

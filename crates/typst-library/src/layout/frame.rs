@@ -13,6 +13,8 @@ use crate::model::Destination;
 use crate::text::TextItem;
 use crate::visualize::{Color, Curve, FixedStroke, Geometry, Image, Paint, Shape};
 
+pub mod item_hash;
+
 /// A finished layout with items at fixed positions.
 #[derive(Default, Clone, Hash)]
 pub struct Frame {
