@@ -89,6 +89,11 @@ impl SystemWorld {
         self.files.loader().project.path()
     }
 
+    /// Resolves the file system path of the given file, including packages.
+    pub fn resolve(&self, id: FileId) -> FileResult<PathBuf> {
+        self.files.loader().resolve(id)
+    }
+
     /// The current working directory.
     pub fn workdir(&self) -> &Path {
         self.workdir.as_deref().unwrap_or(Path::new("."))

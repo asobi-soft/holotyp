@@ -4,6 +4,9 @@ use ts_rs::TS;
 use crate::Message;
 
 pub const DEFLATE_LEVEL: u8 = 6;
+/// Large SVG/image snapshots favor latency over the last few percent of compression.
+pub const FAST_DEFLATE_THRESHOLD: usize = 64 * 1024;
+pub const FAST_DEFLATE_LEVEL: u8 = 1;
 
 /// The wire frame: one deflated CBOR map.
 ///
@@ -14,8 +17,8 @@ pub const DEFLATE_LEVEL: u8 = 6;
 #[ts(export_to = "index.ts")]
 #[serde(rename_all = "camelCase")]
 pub struct Frame {
-    /// Number of the frame within its sender's own stream: each side counts the
-    /// frames it sends, starting from its own counter.
+    /// Number of the frame within its sender's own stream: each side counts the frames it
+    /// sends, starting from its own counter.
     pub seq: u32,
     pub message: Message,
 }
@@ -29,13 +32,18 @@ impl Frame {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut cbor = Vec::new();
         ciborium::into_writer(self, &mut cbor).expect("frame serializes");
-        miniz_oxide::deflate::compress_to_vec(&cbor, DEFLATE_LEVEL)
+        let level = if cbor.len() >= FAST_DEFLATE_THRESHOLD {
+            FAST_DEFLATE_LEVEL
+        } else {
+            DEFLATE_LEVEL
+        };
+        miniz_oxide::deflate::compress_to_vec(&cbor, level)
     }
 
     /// Decode from the wire.
     ///
-    /// `None` means the bytes are not ours and must be dropped as-is: they do
-    /// not inflate, or they inflate to something that is not this frame.
+    /// `None` means the bytes are not ours and must be dropped as-is: they do not
+    /// inflate, or they inflate to something that is not this frame.
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let raw = miniz_oxide::inflate::decompress_to_vec(bytes).ok()?;
         ciborium::from_reader(raw.as_slice()).ok()
