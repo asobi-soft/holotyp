@@ -1,0 +1,15 @@
+// The ES module build and its declarations; the shared policy is in the root base.
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM"],
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "composite": true,
+        "declaration": true,
+        "outDir": "dist",
+        "rootDir": "src"
+    },
+    "include": ["src"]
+}

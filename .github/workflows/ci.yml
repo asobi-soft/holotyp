@@ -55,6 +55,14 @@ jobs:
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
         with:
           key: ${{ matrix.bits }}
+      # `holotyp-preview-viewer`'s build script runs `pnpm install` and
+      # `pnpm build` to embed the preview viewer into the CLI.
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - run: cargo test --workspace --no-run
       - run: cargo test --workspace --no-fail-fast
         env:
@@ -96,6 +104,13 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+      # The viewer's build script needs the Node toolchain to embed its assets.
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - run: cargo clippy --workspace --all-targets --all-features
       # These crates have cargo features, so we check them separately, or else
       # feature unification may mask errors.
@@ -125,6 +140,13 @@ jobs:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - uses: dtolnay/rust-toolchain@87eb139fed4b08a67bd1fa429a21d1f5d523e03e # 1.92.0
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+      # The viewer's build script needs the Node toolchain to embed its assets.
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - run: cargo check --workspace --all-targets --all-features
 
   fuzz:

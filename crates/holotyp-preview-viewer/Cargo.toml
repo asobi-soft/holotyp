@@ -1,0 +1,20 @@
+[package]
+name = "holotyp-preview-viewer"
+description = "Embeds the Holotyp preview viewer's web assets for the CLI."
+version = { workspace = true }
+rust-version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = false
+
+[dependencies]
+phf = { workspace = true }
+
+[build-dependencies]
+holotyp-preview-protocol = { workspace = true }
+ignore = { workspace = true }
+which = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,35 @@
+# `holotyp-preview-viewer`'s build script runs `pnpm install --frozen-lockfile`
+# and `pnpm build` at the repository root to embed the preview viewer into the
+# CLI. Cross builds inside a container that ships neither Node nor pnpm, so the
+# toolchain has to be installed there.
+[target.x86_64-unknown-linux-musl]
+pre-build = [
+    "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl",
+    "curl -fsSL https://deb.nodesource.com/setup_24.x | bash -",
+    "apt-get install -y nodejs",
+    "npm install -g pnpm@12",
+]
+
+[target.aarch64-unknown-linux-musl]
+pre-build = [
+    "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl",
+    "curl -fsSL https://deb.nodesource.com/setup_24.x | bash -",
+    "apt-get install -y nodejs",
+    "npm install -g pnpm@12",
+]
+
+[target.armv7-unknown-linux-musleabi]
+pre-build = [
+    "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl",
+    "curl -fsSL https://deb.nodesource.com/setup_24.x | bash -",
+    "apt-get install -y nodejs",
+    "npm install -g pnpm@12",
+]
+
+[target.riscv64gc-unknown-linux-gnu]
+pre-build = [
+    "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl",
+    "curl -fsSL https://deb.nodesource.com/setup_24.x | bash -",
+    "apt-get install -y nodejs",
+    "npm install -g pnpm@12",
+]

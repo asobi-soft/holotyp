@@ -22,6 +22,7 @@ docs/dist
 
 # Node
 node_modules
+.eslintcache
 tools/test-helper/dist
 package-lock.json
 

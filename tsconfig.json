@@ -1,0 +1,14 @@
+{
+    "files": [],
+    "references": [
+        {
+            "path": "./packages/preview-protocol"
+        },
+        {
+            "path": "./crates/holotyp-preview-viewer/tsconfig.node.json"
+        },
+        {
+            "path": "./crates/holotyp-preview-viewer/tsconfig.app.json"
+        }
+    ]
+}
