@@ -13,6 +13,7 @@ typst = { workspace = true }
 typst-library = { workspace = true }
 typst-layout = { workspace = true }
 typst-svg = { workspace = true }
+typst-syntax = { workspace = true }
 holotyp-preview-protocol = { workspace = true }
 ecow = { workspace = true }
 
