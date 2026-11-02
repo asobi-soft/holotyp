@@ -1,0 +1,28 @@
+{
+  "name": "@asobisoft/holotyp-preview-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Wire types, framing and transports for the Holotyp preview protocol.",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "type-check": "tsc -p tsconfig.json --composite false --noEmit"
+  },
+  "dependencies": {
+    "cbor-x": "^1.6.0"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

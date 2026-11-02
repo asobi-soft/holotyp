@@ -1,0 +1,14 @@
+// The policy every TypeScript project in this repository shares
+{
+    "compilerOptions": {
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        // Type-only imports must say so: the package is consumed by a bundler that
+        // does not type-check, and the extension emits CommonJS.
+        "verbatimModuleSyntax": true,
+        // Files without imports are still modules; avoids ambient redeclaration bugs.
+        "moduleDetection": "force",
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true
+    }
+}

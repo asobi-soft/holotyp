@@ -10,6 +10,7 @@ mod info;
 mod init;
 mod manifest;
 mod packages;
+mod preview;
 mod query;
 mod terminal;
 #[cfg(feature = "self-update")]
@@ -79,6 +80,7 @@ fn dispatch() -> HintedStrResult<()> {
         Command::Completions(command) => crate::completions::completions(command),
         Command::Info(command) => crate::info::info(command)?,
         Command::Manifest(command) => crate::manifest::manifest(command)?,
+        Command::Preview(command) => crate::preview::command::preview(command)?,
     }
     Ok(())
 }
