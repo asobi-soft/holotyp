@@ -14,6 +14,7 @@ use clap::builder::styling::{AnsiColor, Effects};
 use clap::builder::{Styles, TypedValueParser, ValueParser};
 use clap::{ArgAction, Args, ColorChoice, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::Shell;
+use holotyp_preview_protocol::PreviewSettings;
 use semver::Version;
 use serde::Serialize;
 use typst_utils::display_possible_values;
@@ -112,6 +113,9 @@ pub enum Command {
 
     /// Dumps the built-in library manifest.
     Manifest(ManifestCommand),
+
+    /// Serves a live preview of the document in the browser.
+    Preview(PreviewCommand),
 }
 
 /// Dumps the built-in library manifest.
@@ -124,6 +128,38 @@ pub struct ManifestCommand {
     /// Pretty-print the JSON output
     #[arg(long)]
     pub pretty: bool,
+}
+
+/// Serves a live preview.
+#[derive(Debug, Clone, Parser)]
+pub struct PreviewCommand {
+    /// Path to the main Typst source file.
+    #[clap(value_hint = ValueHint::FilePath)]
+    pub input: PathBuf,
+
+    /// Bind address for the HTTP/WS server.
+    #[arg(long, default_value = "127.0.0.1")]
+    pub host: String,
+
+    /// Bind port; `0` picks a free port (the actual port is printed).
+    #[arg(long, default_value_t = 0)]
+    pub port: u16,
+
+    /// Do not open the preview page automatically.
+    #[arg(long)]
+    pub no_open: bool,
+
+    /// Display settings.
+    #[clap(flatten)]
+    pub settings: PreviewSettings,
+
+    /// World arguments.
+    #[clap(flatten)]
+    pub world: WorldArgs,
+
+    /// Processing arguments.
+    #[clap(flatten)]
+    pub process: ProcessArgs,
 }
 
 /// Compiles an input file into a supported output format.

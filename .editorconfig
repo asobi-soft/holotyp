@@ -12,3 +12,7 @@ indent_size = 4
 
 [*.{typ,md}]
 indent_size = 2
+
+[*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,vue,css,scss,sass,less,styl}]
+indent_size = 2
+max_line_length = 90
