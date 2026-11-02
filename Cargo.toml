@@ -160,10 +160,12 @@ holotyp-manifest-schema = { path = "crates/holotyp-manifest-schema", version = "
 holotyp-preview = { path = "crates/holotyp-preview", version = "0.15.1" }
 holotyp-preview-protocol = { path = "crates/holotyp-preview-protocol", version = "0.15.1" }
 holotyp-preview-viewer = { path = "crates/holotyp-preview-viewer", version = "0.15.1" }
-axum = "0.8"
+axum = { version = "0.8", features = ["ws"] }
+futures-util = "0.3"
 ignore = "0.4"
 miniz_oxide = "0.9"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "time", "net"] }
+tokio-tungstenite = "0.30"
 ts-rs = { version = "12", features = ["serde-json-impl", "no-serde-warnings"] }
 which = "8"
 

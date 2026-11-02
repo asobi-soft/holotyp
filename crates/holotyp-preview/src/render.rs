@@ -5,8 +5,9 @@
 //! here has to look inside the SVG.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
-use typst_layout::Page;
+use typst_layout::{Page, PagedDocument};
 use typst_library::layout::{Frame, FrameItem, Point, Size};
 use typst_library::visualize::Geometry;
 use typst_svg::{Fragment, SvgSession};
@@ -24,8 +25,7 @@ pub fn background_item(page: &Page) -> Option<FrameItem> {
 /// Renders items and tracks what the client currently shows.
 pub struct FrameRenderer {
     session: SvgSession,
-    /// The document we are rendering.
-    pages: Vec<Page>,
+    doc: Option<Arc<PagedDocument>>,
     sent_items: HashSet<u64>,
     sent_defs: HashSet<String>,
     revision: u64,
@@ -35,7 +35,7 @@ impl FrameRenderer {
     pub fn new() -> Self {
         Self {
             session: SvgSession::new(),
-            pages: Vec::new(),
+            doc: None,
             sent_items: HashSet::new(),
             sent_defs: HashSet::new(),
             revision: 0,
@@ -43,8 +43,8 @@ impl FrameRenderer {
     }
 
     /// Swap in a newly compiled document (call once per compilation).
-    pub fn set_document(&mut self, doc: &typst_layout::PagedDocument) {
-        self.pages = doc.pages().to_vec();
+    pub fn set_document(&mut self, doc: Arc<PagedDocument>) {
+        self.doc = Some(doc);
         self.revision += 1;
     }
 
@@ -60,7 +60,7 @@ impl FrameRenderer {
     ///
     /// Returns `None` for non-renderable items (tags).
     pub fn render_item(&mut self, page: usize, slot: usize) -> Option<Fragment> {
-        let p = self.pages.get(page)?;
+        let p = self.doc.as_ref()?.pages().get(page)?;
         let size = p.frame.size();
         // Walk to the slot (frames expose an iterator, not indexing).
         let (_pos, item) = p
@@ -82,7 +82,7 @@ impl FrameRenderer {
     /// Returns `None` for a page that paints no background (`fill: none`).
     pub fn render_background(&mut self, page: usize) -> Option<Fragment> {
         let (item, size) = {
-            let p = self.pages.get(page)?;
+            let p = self.doc.as_ref()?.pages().get(page)?;
             (background_item(p)?, p.frame.size())
         };
         Some(self.render_origin(item, size))
