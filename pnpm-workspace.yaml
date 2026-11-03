@@ -5,4 +5,5 @@ catalog:
   typescript: ~6.0.0
 
 allowBuilds:
+  cbor-extract: true
   esbuild: true
