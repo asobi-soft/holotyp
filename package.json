@@ -15,6 +15,7 @@
     },
     "dependencies": {
         "@asobisoft/holotyp-preview-protocol": "workspace:*",
+        "cbor-x": "^1.6.0",
         "vue": "^3.5.42"
     },
     "devDependencies": {
