@@ -320,6 +320,12 @@ pub enum Destination {
     Location(Location),
 }
 
+/// Resolves an unresolved [`Destination::Location`] to the page point it names.
+pub trait LinkTargets: Send + Sync {
+    /// The page point `loc` names, if the document settles it.
+    fn position(&self, loc: Location) -> Option<PagedPosition>;
+}
+
 impl Destination {
     pub fn alt_text(
         &self,

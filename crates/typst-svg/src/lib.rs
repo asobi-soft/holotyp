@@ -14,15 +14,18 @@ pub use self::image::{WebImage, convert_image_scaling};
 use std::hash::Hash;
 
 use comemo::Tracked;
-use ecow::EcoString;
 use indexmap::IndexMap;
 use rustc_hash::FxBuildHasher;
+
+use std::sync::Arc;
+
+use ecow::{EcoString, eco_format};
 use typst_layout::{Page, PagedDocument};
 use typst_library::format::{Complete, Fields, Partial};
 use typst_library::layout::{
     Abs, Frame, FrameItem, FrameKind, GroupItem, Point, Ratio, Sides, Size, Transform,
 };
-use typst_library::model::{Destination, Document, LateLinkResolver};
+use typst_library::model::{Destination, Document, LateLinkResolver, LinkTargets};
 use typst_library::visualize::{Geometry, Gradient, Tiling};
 use xmlwriter::XmlWriter;
 
@@ -205,6 +208,8 @@ impl SvgOptions<Partial> {
 struct SVGRenderer<'a> {
     /// The document's introspector, if we're writing an HTML frame.
     link_resolver: Option<Tracked<'a, LateLinkResolver<'a>>>,
+    /// The page points unresolved links resolve to, if the viewer is to jump by itself.
+    targets: Option<Arc<dyn LinkTargets>>,
     /// Prepared glyphs.
     glyphs: Deduplicator<Option<RenderedGlyph>>,
     /// Clip paths are used to clip a group. A clip path is a path that defines
@@ -289,6 +294,7 @@ impl<'a> SVGRenderer<'a> {
     fn with_options(link_resolver: Option<Tracked<'a, LateLinkResolver<'a>>>) -> Self {
         SVGRenderer {
             link_resolver,
+            targets: None,
             glyphs: Deduplicator::new('g'),
             clip_paths: Deduplicator::new('c'),
             gradients: Deduplicator::new('f'),
@@ -393,14 +399,15 @@ impl<'a> SVGRenderer<'a> {
             Destination::Url(url) => {
                 a.attr("href", url.as_str());
                 a.attr("xlink:href", url.as_str());
+                if self.targets.is_some() {
+                    a.attr("target", "_blank");
+                }
             }
-            Destination::Position(_) => {
-                // TODO: Links on the same page could be supported.
-            }
-            Destination::Location(loc) => {
-                // TODO: Location links on the same page could also be supported
-                // outside of HTML.
-                if let Some(resolver) = self.link_resolver
+            Destination::Position(_) | Destination::Location(_) => {
+                if let Some(tag) = self.link_tag(dest) {
+                    a.attr("data-ht-link", tag.as_str());
+                } else if let Destination::Location(loc) = dest
+                    && let Some(resolver) = self.link_resolver
                     && let Some(link) = resolver.resolve(*loc)
                     && let Ok(uri) = link.into_relative_uri()
                 {
@@ -415,6 +422,22 @@ impl<'a> SVGRenderer<'a> {
             .attr("height", size.y.to_pt())
             .attr("fill", "transparent")
             .attr("stroke", "none");
+    }
+
+    /// The `data-ht-link` value of a link the viewer resolves itself
+    fn link_tag(&self, dest: &Destination) -> Option<EcoString> {
+        let targets = self.targets.as_ref()?;
+        let pos = match dest {
+            Destination::Url(_) => return None,
+            Destination::Position(pos) => *pos,
+            Destination::Location(loc) => targets.position(*loc)?,
+        };
+        Some(eco_format!(
+            "{},{},{}",
+            pos.page.get() - 1,
+            pos.point.x.to_pt(),
+            pos.point.y.to_pt()
+        ))
     }
 
     /// Renders a linkable point that can be used to link into an HTML frame.

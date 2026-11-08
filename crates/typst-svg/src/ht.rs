@@ -45,6 +45,12 @@ impl SvgSession {
         Self { renderer: SVGRenderer::new() }
     }
 
+    /// Sets the table that turns unresolved links into `data-ht-link` tags, i.e. into a
+    /// target the viewer jumps to without asking the server.
+    pub fn set_targets(&mut self, targets: Option<Arc<dyn LinkTargets>>) {
+        self.renderer.targets = targets;
+    }
+
     /// Renders one frame, splitting the frame body from its resources.
     ///
     /// The body is a `<g>` element and can be grafted into a page `<svg>` as

@@ -6,9 +6,9 @@ use typst_library::diag::SourceResult;
 use typst_library::engine::Engine;
 use typst_library::format::DocumentFormatOptions;
 use typst_library::foundations::{Content, Output, Smart, StyleChain, Target};
-use typst_library::introspection::Introspector;
+use typst_library::introspection::{Introspector, Location, PagedPosition};
 use typst_library::layout::{Abs, Frame, Sides};
-use typst_library::model::{Document, DocumentInfo, Numbering};
+use typst_library::model::{Document, DocumentInfo, LinkTargets, Numbering};
 use typst_library::visualize::{Color, Paint};
 
 use crate::PagedIntrospector;
@@ -62,6 +62,12 @@ impl Hash for PagedDocument {
         // no need to hash it.
         self.pages.hash(state);
         self.info.hash(state);
+    }
+}
+
+impl LinkTargets for PagedDocument {
+    fn position(&self, loc: Location) -> Option<PagedPosition> {
+        self.introspector.position(loc)
     }
 }
 
